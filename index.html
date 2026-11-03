@@ -1,0 +1,337 @@
+<title>Hello Button</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,600&family=DM+Sans:wght@500&display=swap">
+<style>
+  /* Layout: one full-height stage; a word picker sits top-left; a black circle expands from the button to reveal the hello screen */
+  :root {
+    --bg: #e4e5e8;
+    --ink: #111214;
+    --on-ink: #f4f4f6;
+    --muted: #6b6e76;
+    --panel: #f3f4f6;
+    --line: #cfd1d6;
+    --display: "Fraunces", Georgia, "Times New Roman", serif;
+    --ui: "DM Sans", system-ui, -apple-system, sans-serif;
+    --ease: cubic-bezier(.2, .8, .2, 1);
+  }
+  html, body { height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--ui);
+    overflow: hidden;
+  }
+  .stage {
+    position: relative;
+    height: 100%;
+    display: grid;
+    place-items: center;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+
+  /* ---------- Word picker ---------- */
+  .picker {
+    position: fixed;
+    top: calc(16px + env(safe-area-inset-top, 0px));
+    left: max(16px, env(safe-area-inset-left, 0px));
+    z-index: 5;
+    font: 500 .9rem/1 var(--ui);
+  }
+  .picker-label {
+    display: block;
+    font-size: .7rem;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: .5rem;
+  }
+  #pick {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    min-width: 11rem;
+    justify-content: space-between;
+    font: inherit;
+    color: var(--ink);
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: .75rem 1rem;
+    cursor: pointer;
+    transition: border-color .2s, box-shadow .2s;
+  }
+  #pick:hover { border-color: var(--muted); }
+  #pick:focus-visible { outline: 3px solid var(--muted); outline-offset: 2px; }
+  .chev {
+    width: 10px; height: 10px;
+    border-right: 1.5px solid currentColor;
+    border-bottom: 1.5px solid currentColor;
+    transform: translateY(-2px) rotate(45deg);
+    transition: transform .35s var(--ease);
+  }
+  .picker.open .chev { transform: translateY(2px) rotate(225deg); }
+
+  #menu {
+    list-style: none;
+    margin: .5rem 0 0;
+    padding: .35rem;
+    min-width: 100%;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    box-shadow: 0 14px 30px rgb(17 18 20 / .12);
+    position: absolute;
+    left: 0;
+    transform-origin: top left;
+    opacity: 0;
+    transform: translateY(-6px) scale(.96);
+    pointer-events: none;
+    transition: opacity .22s ease, transform .3s var(--ease);
+  }
+  .picker.open #menu { opacity: 1; transform: none; pointer-events: auto; }
+  #menu li {
+    padding: .65rem .75rem;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    white-space: nowrap;
+    opacity: 0;
+    transform: translateY(-4px);
+    transition: background .15s, opacity .25s ease, transform .3s var(--ease);
+  }
+  .picker.open #menu li { opacity: 1; transform: none; }
+  #menu li:hover, #menu li.active { background: var(--bg); }
+  #menu li[aria-selected="true"]::after {
+    content: "";
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--ink);
+  }
+
+  /* ---------- Main button ---------- */
+  #go {
+    font: 500 1rem/1 var(--ui);
+    letter-spacing: 0.04em;
+    color: var(--on-ink);
+    background: var(--ink);
+    border: 0;
+    border-radius: 999px;
+    padding: 1.1rem 2.4rem;
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    box-shadow: 0 6px 18px rgb(17 18 20 / 0.18);
+    transition: transform .2s ease, box-shadow .2s ease, opacity .25s ease, width .45s var(--ease);
+  }
+  #go:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgb(17 18 20 / 0.24); }
+  #go:active { transform: translateY(0) scale(.97); }
+  #go:focus-visible { outline: 3px solid var(--muted); outline-offset: 4px; }
+  #go.gone { opacity: 0; pointer-events: none; }
+  #go .txt {
+    display: inline-block;
+    transition: opacity .2s ease, transform .3s var(--ease), filter .2s ease;
+  }
+  #go .txt.out { opacity: 0; transform: translateY(8px); filter: blur(4px); }
+  #go .txt.in-start { opacity: 0; transform: translateY(-8px); filter: blur(4px); transition: none; }
+
+  /* ---------- Reveal ---------- */
+  .reveal {
+    position: fixed;
+    inset: 0;
+    z-index: 10;
+    background: var(--ink);
+    clip-path: circle(0 at var(--x, 50%) var(--y, 50%));
+    transition: clip-path .9s cubic-bezier(.7, 0, .2, 1);
+    display: grid;
+    place-items: center;
+    gap: 1.5rem;
+    align-content: center;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    pointer-events: none;
+  }
+  .reveal.open { clip-path: circle(150% at var(--x, 50%) var(--y, 50%)); pointer-events: auto; }
+
+  .hello {
+    font-family: var(--display);
+    font-weight: 300;
+    font-size: clamp(3.5rem, 16vw, 9rem);
+    line-height: 1;
+    color: var(--on-ink);
+    margin: 0;
+    display: flex;
+  }
+  .hello span {
+    display: inline-block;
+    opacity: 0;
+    transform: translateY(0.4em);
+    filter: blur(6px);
+    transition: opacity .7s ease, transform .7s var(--ease), filter .7s ease;
+  }
+  .reveal.open .hello span { opacity: 1; transform: none; filter: none; }
+
+  #back {
+    font: 500 .85rem/1 var(--ui);
+    letter-spacing: .06em;
+    color: var(--on-ink);
+    background: transparent;
+    border: 1px solid rgb(244 244 246 / .35);
+    border-radius: 999px;
+    padding: .7rem 1.4rem;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity .5s ease 1.2s, border-color .2s;
+  }
+  .reveal.open #back { opacity: 1; }
+  #back:hover { border-color: var(--on-ink); }
+  #back:focus-visible { outline: 2px solid var(--on-ink); outline-offset: 3px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition-duration: .01s !important; transition-delay: 0s !important; }
+  }
+</style>
+
+<div class="picker" id="picker">
+  <span class="picker-label" id="pick-label">Button text</span>
+  <button id="pick" type="button" aria-haspopup="listbox" aria-expanded="false" aria-labelledby="pick-label pick-value">
+    <span id="pick-value">Click me</span>
+    <span class="chev" aria-hidden="true"></span>
+  </button>
+  <ul id="menu" role="listbox" aria-labelledby="pick-label" tabindex="-1"></ul>
+</div>
+
+<main class="stage">
+  <button id="go" type="button"><span class="txt">Click me</span></button>
+  <section class="reveal" id="reveal" aria-live="polite">
+    <h1 class="hello" aria-label="Hello"></h1>
+    <button id="back" type="button">Back</button>
+  </section>
+</main>
+
+<script>
+  const WORDS = ['Click me', 'Press here', 'Tap to begin', 'Say hi', 'Go on, try it', 'Open'];
+
+  const picker = document.getElementById('picker');
+  const pick = document.getElementById('pick');
+  const pickValue = document.getElementById('pick-value');
+  const menu = document.getElementById('menu');
+  const go = document.getElementById('go');
+  const goTxt = go.querySelector('.txt');
+  const reveal = document.getElementById('reveal');
+  const back = document.getElementById('back');
+  const hello = reveal.querySelector('.hello');
+
+  let current = 0;
+  let active = 0;
+
+  // Build menu
+  WORDS.forEach((w, i) => {
+    const li = document.createElement('li');
+    li.id = 'opt-' + i;
+    li.role = 'option';
+    li.textContent = w;
+    li.setAttribute('aria-selected', i === current);
+    li.addEventListener('click', () => { choose(i); close(); pick.focus(); });
+    li.addEventListener('mousemove', () => setActive(i));
+    menu.appendChild(li);
+  });
+  const items = [...menu.children];
+
+  function setActive(i) {
+    active = (i + items.length) % items.length;
+    items.forEach((li, j) => li.classList.toggle('active', j === active));
+    menu.setAttribute('aria-activedescendant', items[active].id);
+  }
+
+  function open() {
+    picker.classList.add('open');
+    pick.setAttribute('aria-expanded', 'true');
+    items.forEach((li, i) => li.style.transitionDelay = (0.03 * i) + 's, ' + (0.03 * i) + 's, ' + (0.03 * i) + 's');
+    setActive(current);
+    menu.focus({ preventScroll: true });
+  }
+  function close() {
+    picker.classList.remove('open');
+    pick.setAttribute('aria-expanded', 'false');
+    items.forEach(li => li.style.transitionDelay = '0s');
+  }
+
+  pick.addEventListener('click', () => picker.classList.contains('open') ? close() : open());
+  pick.addEventListener('keydown', e => {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); open(); }
+  });
+  menu.addEventListener('keydown', e => {
+    if (e.key === 'ArrowDown') { e.preventDefault(); setActive(active + 1); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); setActive(active - 1); }
+    else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); choose(active); close(); pick.focus(); }
+    else if (e.key === 'Escape' || e.key === 'Tab') { close(); pick.focus(); }
+  });
+  document.addEventListener('pointerdown', e => {
+    if (!picker.contains(e.target)) close();
+  });
+
+  // Smoothly swap the main button's words and width
+  let swapTimer;
+  function choose(i) {
+    if (i === current) return;
+    current = i;
+    const word = WORDS[i];
+    pickValue.textContent = word;
+    items.forEach((li, j) => li.setAttribute('aria-selected', j === i));
+
+    clearTimeout(swapTimer);
+    const startW = go.getBoundingClientRect().width;
+    go.style.width = startW + 'px';
+    goTxt.classList.add('out');
+
+    swapTimer = setTimeout(() => {
+      // measure the new natural width
+      goTxt.textContent = word;
+      go.style.width = '';
+      const endW = go.getBoundingClientRect().width;
+      go.style.width = startW + 'px';
+      go.offsetWidth; // reflow
+      go.style.width = endW + 'px';
+
+      goTxt.classList.remove('out');
+      goTxt.classList.add('in-start');
+      goTxt.offsetWidth;
+      goTxt.classList.remove('in-start');
+
+      setTimeout(() => { go.style.width = ''; }, 480);
+    }, 200);
+  }
+
+  // Hello letters
+  [...'Hello'].forEach((ch, i) => {
+    const s = document.createElement('span');
+    s.textContent = ch;
+    s.setAttribute('aria-hidden', 'true');
+    s.style.transitionDelay = (0.45 + i * 0.08) + 's';
+    hello.appendChild(s);
+  });
+
+  function setOrigin() {
+    const r = go.getBoundingClientRect();
+    reveal.style.setProperty('--x', (r.left + r.width / 2) + 'px');
+    reveal.style.setProperty('--y', (r.top + r.height / 2) + 'px');
+  }
+
+  go.addEventListener('click', () => {
+    close();
+    setOrigin();
+    go.classList.add('gone');
+    reveal.classList.add('open');
+    setTimeout(() => back.focus({ preventScroll: true }), 900);
+  });
+
+  back.addEventListener('click', () => {
+    reveal.classList.remove('open');
+    go.classList.remove('gone');
+    go.focus({ preventScroll: true });
+  });
+</script>
